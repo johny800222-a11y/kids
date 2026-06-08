@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="小譯王">
+<meta name="theme-color" content="#FF6B6B">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.svg">
+<title>🌈 小譯王</title>
+<link rel="stylesheet" href="css/kids.css">
+</head>
+<body>
+
+<!-- ══ APP SHELL ══════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- ── HEADER ─────────────────────────────────────────── -->
+  <header id="top-bar">
+    <span id="page-title">✏️ 文字翻譯</span>
+    <span id="online-dot" title="離線"></span>
+  </header>
+
+  <!-- ── PAGES ──────────────────────────────────────────── -->
+  <main id="pages">
+
+    <!-- ① TEXT TRANSLATION -->
+    <section class="page active" id="page-text">
+      <div class="mascot-row">
+        <div>
+          <h2>✏️ 文字翻譯</h2>
+          <p class="sub">輸入文字，立刻翻譯！</p>
+        </div>
+        <span class="mascot bounce">🦊</span>
+      </div>
+
+      <div class="lang-swap-bar">
+        <button class="lang-btn" id="src-lang-btn">🇹🇼 中文</button>
+        <button class="swap-btn" id="swap-btn" aria-label="互換語言">⇄</button>
+        <button class="lang-btn" id="tgt-lang-btn">🇺🇸 英文</button>
+      </div>
+
+      <div class="card input-card">
+        <textarea id="input-text" placeholder="在這裡輸入文字…" rows="4"></textarea>
+        <div class="card-footer">
+          <span id="char-count">0 字</span>
+          <span id="translating-spinner" class="hidden">⏳</span>
+        </div>
+      </div>
+
+      <div class="card output-card hidden" id="output-card">
+        <div class="output-header">
+          <span id="output-lang-label">🇺🇸 英文</span>
+          <div class="output-actions">
+            <button class="icon-btn" id="copy-btn" title="複製">📋</button>
+            <button class="icon-btn" id="speak-output-btn" title="朗讀">🔊</button>
+          </div>
+        </div>
+        <p id="output-text" class="output-text"></p>
+      </div>
+
+      <div id="online-badge" class="online-badge hidden">
+        🟢 已連線 — 使用線上翻譯
+      </div>
+    </section>
+
+    <!-- ② CAMERA TRANSLATION -->
+    <section class="page" id="page-camera">
+      <div class="mascot-row">
+        <div>
+          <h2>📷 相機翻譯</h2>
+          <p class="sub">對準文字，即時翻譯！</p>
+        </div>
+        <span class="mascot">🐼</span>
+      </div>
+
+      <div class="camera-container" id="camera-container">
+        <video id="camera-video" autoplay playsinline muted></video>
+        <canvas id="camera-canvas"></canvas>
+        <div id="camera-overlay" class="camera-overlay hidden">
+          <div id="ocr-result-box" class="ocr-result-box"></div>
+        </div>
+        <div class="camera-placeholder" id="camera-placeholder">
+          <span>📷</span>
+          <p>點擊下方按鈕開啟相機</p>
+        </div>
+      </div>
+
+      <div class="camera-controls">
+        <button class="big-btn mint" id="camera-toggle-btn">開啟相機</button>
+        <button class="big-btn" id="capture-btn" disabled>📸 擷取翻譯</button>
+      </div>
+
+      <div class="card hidden" id="camera-result-card">
+        <p class="label">📝 識別到的文字：</p>
+        <p id="camera-detected" class="detected-text"></p>
+        <hr>
+        <p class="label">✨ 翻譯結果：</p>
+        <p id="camera-translated" class="big-result"></p>
+        <button class="icon-btn" id="speak-camera-btn">🔊 朗讀</button>
+      </div>
+    </section>
+
+    <!-- ③ VOICE -->
+    <section class="page" id="page-voice">
+      <div class="mascot-row">
+        <div>
+          <h2>🎙️ 語音翻譯</h2>
+          <p class="sub">說說看，我來翻！</p>
+        </div>
+        <span class="mascot">🐧</span>
+      </div>
+
+      <div class="lang-swap-bar">
+        <button class="lang-btn" id="v-src-lang-btn">🇹🇼 中文</button>
+        <span style="color:#aaa;font-size:1.2rem">→</span>
+        <button class="lang-btn" id="v-tgt-lang-btn">🇺🇸 英文</button>
+      </div>
+
+      <div class="mic-area">
+        <div class="pulse-rings" id="pulse-rings"></div>
+        <button class="mic-btn coral" id="mic-btn">🎤</button>
+      </div>
+      <p id="mic-status" class="mic-status">點一下開始說話</p>
+
+      <div class="card hidden" id="voice-recognized-card">
+        <p class="label">🗣️ 你說的：</p>
+        <p id="voice-recognized" class="heading-text"></p>
+      </div>
+
+      <div class="card hidden" id="voice-result-card">
+        <div class="output-header">
+          <p class="label">✨ 翻譯結果：</p>
+          <button class="icon-btn" id="speak-voice-btn">🔊</button>
+        </div>
+        <p id="voice-translated" class="big-result coral-text"></p>
+      </div>
+
+      <div class="tip-box">
+        💡 <strong>小提醒：</strong>語音功能需要允許麥克風權限
+      </div>
+    </section>
+
+    <!-- ④ CONVERSATION -->
+    <section class="page" id="page-conv">
+      <div class="conv-container">
+        <!-- Person B (top, flipped) -->
+        <div class="person-area person-b" id="person-b-area">
+          <div class="conv-bubble hidden" id="conv-bubble-b"></div>
+          <button class="speaker-btn mint" id="conv-btn-b">
+            <span class="sb-flag" id="conv-b-flag">🇺🇸</span>
+            <span class="sb-label">英文 — 點我說話</span>
+          </button>
+        </div>
+
+        <!-- Divider -->
+        <div class="conv-divider">
+          <div class="divider-line"></div>
+          <span id="conv-status-badge" class="conv-badge">
+            🔴 需要網路
+          </span>
+          <div class="divider-line"></div>
+        </div>
+
+        <!-- Person A (bottom) -->
+        <div class="person-area person-a" id="person-a-area">
+          <button class="speaker-btn coral" id="conv-btn-a">
+            <span class="sb-flag" id="conv-a-flag">🇹🇼</span>
+            <span class="sb-label">中文 — 點我說話</span>
+          </button>
+          <div class="conv-bubble hidden" id="conv-bubble-a"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑤ WORD BOOK -->
+    <section class="page" id="page-words">
+      <div class="wordbook-header">
+        <div>
+          <h2>📚 單字書</h2>
+          <p class="sub">教育部國小1000單字</p>
+        </div>
+        <div class="wb-stats">
+          <span id="wb-learned-count" class="coral-text">0</span>/<span id="wb-total-count">0</span>
+          <small>已學</small>
+        </div>
+        <button class="flash-btn purple" id="flashcard-btn">翻卡</button>
+      </div>
+
+      <div class="cat-scroll" id="cat-scroll"></div>
+
+      <div class="search-bar">
+        <span>🔍</span>
+        <input type="text" id="wb-search" placeholder="搜尋英文或中文…">
+      </div>
+
+      <div id="word-list" class="word-list"></div>
+    </section>
+
+  </main>
+
+  <!-- ── BOTTOM TAB BAR ─────────────────────────────────── -->
+  <nav id="tab-bar">
+    <button class="tab active" data-page="text">
+      <span class="tab-icon">✏️</span>
+      <span class="tab-label">文字</span>
+    </button>
+    <button class="tab" data-page="camera">
+      <span class="tab-icon">📷</span>
+      <span class="tab-label">相機</span>
+    </button>
+    <button class="tab" data-page="voice">
+      <span class="tab-icon">🎙️</span>
+      <span class="tab-label">語音</span>
+    </button>
+    <button class="tab" data-page="conv">
+      <span class="tab-icon">💬</span>
+      <span class="tab-label">對話</span>
+    </button>
+    <button class="tab" data-page="words">
+      <span class="tab-icon">📚</span>
+      <span class="tab-label">單字書</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- ── MODALS ─────────────────────────────────────────────── -->
+
+<!-- Language picker -->
+<div id="lang-modal" class="modal hidden">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h3>選擇語言</h3>
+    <div id="lang-list" class="lang-list"></div>
+  </div>
+</div>
+
+<!-- Word detail -->
+<div id="word-modal" class="modal hidden">
+  <div class="modal-sheet word-sheet">
+    <div class="modal-handle"></div>
+    <div id="word-detail-content"></div>
+    <button class="big-btn green" id="mark-learned-btn">標記為已學習 ✓</button>
+  </div>
+</div>
+
+<!-- Flashcard -->
+<div id="flashcard-modal" class="modal hidden">
+  <div class="flashcard-full">
+    <div class="fc-top-bar">
+      <button id="fc-close-btn" class="icon-btn">✕</button>
+      <span id="fc-progress">1 / 1045</span>
+      <button id="fc-speak-btn" class="icon-btn">🔊</button>
+    </div>
+    <div class="fc-progress-bar"><div id="fc-progress-fill"></div></div>
+    <div class="fc-card-wrap">
+      <div id="fc-card" class="fc-card">
+        <div class="fc-front">
+          <p id="fc-en" class="fc-big"></p>
+          <p id="fc-ex-en" class="fc-small"></p>
+          <p class="fc-hint">點一下翻面</p>
+        </div>
+        <div class="fc-back">
+          <p id="fc-zh" class="fc-big coral-text"></p>
+          <p id="fc-ex-zh" class="fc-small"></p>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button id="fc-prev-btn" class="big-btn purple">← 上一個</button>
+      <button id="fc-next-btn" class="big-btn coral">下一個 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="js/translate.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/wordbook.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
