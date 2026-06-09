@@ -1,7 +1,7 @@
 /**
  * translate.js — Translation Service
- * Offline: local JSON dictionary (with sentence-level tokenization)
- * Online: LibreTranslate public API
+ * Offline:  local JSON dictionary (single words, instant)
+ * Online:   MyMemory API — free, no key, sentence-aware
  */
 
 const LANGUAGES = [
@@ -41,7 +41,6 @@ const Translator = (() => {
   }
 
   // ── Build en→zh map (lazy) ──────────────────────────────
-  // Handles slash variants "be/am/is/are" and parentheticals "eye(s)"
   function getEnMap() {
     if (_enMap) return _enMap;
     _enMap = new Map();
@@ -49,12 +48,12 @@ const Translator = (() => {
       if (!w.en || !w.zh) return;
       const en = w.en.toLowerCase();
       if (!_enMap.has(en)) _enMap.set(en, w.zh);
-      // slash variants: "be/am/is/are" → also "be", "am", "is", "are"
+      // slash variants: "be/am/is/are"
       en.split('/').forEach(part => {
         const p = part.trim();
         if (p && !_enMap.has(p)) _enMap.set(p, w.zh);
       });
-      // parenthetical: "eye(s)" → also "eye"
+      // parenthetical: "eye(s)" → "eye"
       const bare = en.replace(/\(.*?\)/g, '').trim();
       if (bare && !_enMap.has(bare)) _enMap.set(bare, w.zh);
     });
@@ -69,13 +68,11 @@ const Translator = (() => {
     (_dict || []).forEach(w => {
       if (!w.zh || !w.en) return;
       const enBase = w.en.split('/')[0].split('(')[0].trim().toLowerCase();
-      // Full zh value
       if (!_zhMap.has(w.zh)) _zhMap.set(w.zh, enBase);
-      // Each ；-separated segment, stripped of "…X" descriptors and non-CJK chars
       w.zh.split('；').forEach(part => {
         const base = part
-          .replace(/…\S*/g, '')                       // remove "…地點" style suffixes
-          .replace(/[（()）a-zA-Z0-9 .,!?、：: ]/g, '') // remove ASCII / punctuation
+          .replace(/…\S*/g, '')
+          .replace(/[（()）a-zA-Z0-9 .,!?、：: ]/g, '')
           .trim();
         if (base && !_zhMap.has(base)) _zhMap.set(base, enBase);
       });
@@ -90,42 +87,36 @@ const Translator = (() => {
     return 'en';
   }
 
-  // ── Offline lookup ──────────────────────────────────────
+  // ── Offline lookup (single words / short phrases) ───────
   function lookupOffline(text, srcLang, tgtLang) {
     if (!_dict) return null;
     const q    = text.trim();
     const qLow = q.toLowerCase();
 
-    // ── English → Chinese ──────────────────────────────
     if (srcLang === 'en' && tgtLang === 'zh') {
       const map = getEnMap();
-
-      // Exact match
       if (map.has(qLow)) return map.get(qLow);
 
-      // Sentence: translate word-by-word and join
+      // word-by-word for short multi-word input
       const tokens = qLow.split(/\s+/);
       if (tokens.length > 1) {
         const parts = tokens.map(t => {
           const clean = t.replace(/[^a-z]/g, '');
-          return map.get(clean) || clean;   // keep original if not found
+          return map.get(clean) || clean;
         }).filter(Boolean);
         return parts.join('');
       }
 
-      // Single-word prefix fallback
+      // prefix fallback
       const hit = _dict.find(w => w.en.toLowerCase().startsWith(qLow));
       return hit ? hit.zh : null;
     }
 
-    // ── Chinese → English ──────────────────────────────
     if (srcLang === 'zh' && tgtLang === 'en') {
       const map = getZhMap();
-
-      // Exact match
       if (map.has(q)) return map.get(q);
 
-      // Greedy longest-match segmentation (max look-ahead: 6 chars)
+      // greedy longest-match segmentation
       const result = [];
       let i = 0;
       while (i < q.length) {
@@ -139,7 +130,7 @@ const Translator = (() => {
             break;
           }
         }
-        if (!matched) i++; // skip unmatched punctuation / particle
+        if (!matched) i++;
       }
       if (result.length > 0) return result.join(' ');
       return null;
@@ -148,31 +139,45 @@ const Translator = (() => {
     return null;
   }
 
-  // ── Online translation via LibreTranslate ───────────────
+  // ── Online: MyMemory API (free, no key needed) ──────────
+  // Handles full sentence grammar properly
   async function translateOnline(text, srcLang, tgtLang) {
-    const API = 'https://libretranslate.com/translate';
+    // MyMemory uses zh-CN/en/th style codes
+    const codeMap = { zh: 'zh-CN', en: 'en', th: 'th' };
+    const src = codeMap[srcLang] || srcLang;
+    const tgt = codeMap[tgtLang] || tgtLang;
     try {
-      const res = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q: text, source: srcLang, target: tgtLang, format: 'text', api_key: '' }),
-        signal: AbortSignal.timeout(8000),
-      });
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${src}|${tgt}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
       const data = await res.json();
-      return data.translatedText || null;
+      const result = data.responseData?.translatedText;
+      // MyMemory returns "QUERY LENGTH LIMIT..." on abuse — treat as failure
+      if (result && !result.startsWith('QUERY LENGTH')) return result;
+      return null;
     } catch { return null; }
   }
 
-  // ── Main translate function ─────────────────────────────
+  // ── Main translate ──────────────────────────────────────
+  // Strategy:
+  //   Sentences (>4 chars / has spaces): online first → offline fallback
+  //   Single words:                      offline first → online fallback
   async function translate(text, srcLang, tgtLang) {
     if (!text.trim()) return '';
     if (srcLang === tgtLang) return text;
 
-    // 1. Try offline dictionary first
+    const isSentence = text.trim().includes(' ') || text.trim().replace(/\s/g,'').length > 4;
+
+    if (isSentence && _online) {
+      // Online gives correct grammar for sentences
+      const online = await translateOnline(text, srcLang, tgtLang);
+      if (online) return online;
+    }
+
+    // Offline dictionary (instant, works without internet)
     const offline = lookupOffline(text, srcLang, tgtLang);
     if (offline) return offline;
 
-    // 2. Online fallback
+    // Single-word online fallback
     if (_online) {
       const online = await translateOnline(text, srcLang, tgtLang);
       if (online) return online;
