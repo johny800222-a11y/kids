@@ -2,7 +2,7 @@
  * sw.js — Service Worker (offline cache)
  */
 
-const CACHE = 'kids-translator-v1';
+const CACHE = 'kids-translator-v2';
 const PRECACHE = [
   './',
   './index.html',
