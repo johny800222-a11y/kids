@@ -2,7 +2,7 @@
  * sw.js — Service Worker (offline cache)
  */
 
-const CACHE = 'kids-translator-v2';
+const CACHE = 'kids-translator-v3';
 const PRECACHE = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const PRECACHE = [
   './js/voice.js',
   './js/camera.js',
   './js/wordbook.js',
+  './js/quiz.js',
   './js/app.js',
   './data/words_zh_en.json',
   './manifest.json',
@@ -38,7 +39,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
   // Translation API — network only
-  if (url.hostname.includes('libretranslate')) {
+  if (url.hostname.includes('mymemory') || url.hostname.includes('libretranslate')) {
     e.respondWith(fetch(e.request).catch(() => new Response('{}', { headers: { 'Content-Type': 'application/json' } })));
     return;
   }
