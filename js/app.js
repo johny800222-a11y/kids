@@ -10,8 +10,8 @@ const App = (() => {
     voice:  { src: 'zh', tgt: 'en' },
     camera: { tgt: 'en' },
   };
-  let debounceTimer = null;
-  let langPickerTarget = null;   // { mode, which }
+  let debounceTimer   = null;
+  let langPickerTarget = null; // { mode, which }
   const $ = id => document.getElementById(id);
 
   // ── Boot ─────────────────────────────────────────────────
@@ -21,6 +21,7 @@ const App = (() => {
     CameraModule.init();
     ConvModule.init();
     await WordBook.init();
+    await QuizModule.init();
 
     setupTabs();
     setupTextTranslation();
@@ -34,7 +35,14 @@ const App = (() => {
 
   // ── Tabs ─────────────────────────────────────────────────
   function setupTabs() {
-    const TITLES = { text:'✏️ 文字翻譯', camera:'📷 相機翻譯', voice:'🎙️ 語音翻譯', conv:'💬 對話翻譯', words:'📚 單字書' };
+    const TITLES = {
+      text:   '✏️ 文字翻譯',
+      camera: '📷 相機翻譯',
+      voice:  '🎙️ 語音翻譯',
+      conv:   '💬 對話翻譯',
+      words:  '📚 單字書',
+      quiz:   '✍️ 單字填空',
+    };
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         const page = tab.dataset.page;
@@ -61,8 +69,8 @@ const App = (() => {
     $('swap-btn').addEventListener('click', () => {
       [state.text.src, state.text.tgt] = [state.text.tgt, state.text.src];
       const inp = $('input-text').value;
-      $('input-text').value = $('output-text').textContent;
-      $('output-text').textContent = inp;
+      $('input-text').value          = $('output-text').textContent;
+      $('output-text').textContent   = inp;
       updateLangButtons();
       doTranslate();
     });
@@ -77,8 +85,8 @@ const App = (() => {
       Translator.speak($('output-text').textContent, state.text.tgt);
     });
 
-    $('src-lang-btn').addEventListener('click', () => openLangPicker('text', 'src'));
-    $('tgt-lang-btn').addEventListener('click', () => openLangPicker('text', 'tgt'));
+    $('src-lang-btn').addEventListener('click', () => openLangPicker('text',  'src'));
+    $('tgt-lang-btn').addEventListener('click', () => openLangPicker('text',  'tgt'));
     $('v-src-lang-btn').addEventListener('click', () => openLangPicker('voice', 'src'));
     $('v-tgt-lang-btn').addEventListener('click', () => openLangPicker('voice', 'tgt'));
   }
@@ -88,15 +96,15 @@ const App = (() => {
     if (!text) return;
     $('translating-spinner').classList.remove('hidden');
     const result = await Translator.translate(text, state.text.src, state.text.tgt);
-    $('output-text').textContent = result;
+    $('output-text').textContent       = result;
     $('output-card').classList.remove('hidden');
     $('output-lang-label').textContent = getLangDisplay(state.text.tgt);
     $('translating-spinner').classList.add('hidden');
   }
 
   function updateLangButtons() {
-    $('src-lang-btn').textContent = getLangDisplay(state.text.src);
-    $('tgt-lang-btn').textContent = getLangDisplay(state.text.tgt);
+    $('src-lang-btn').textContent   = getLangDisplay(state.text.src);
+    $('tgt-lang-btn').textContent   = getLangDisplay(state.text.tgt);
     $('v-src-lang-btn').textContent = getLangDisplay(state.voice.src);
     $('v-tgt-lang-btn').textContent = getLangDisplay(state.voice.tgt);
   }
