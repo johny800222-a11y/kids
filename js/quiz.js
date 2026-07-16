@@ -201,8 +201,15 @@ const QuizModule = (() => {
         <span>${i + 1}.</span>
         <span>${q.word.zh}</span>
         <span class="res-en">${q.word.en}</span>
+        <button class="icon-btn res-speak" data-word="${q.word.en}" title="朗讀英文">🔊</button>
         <span>${q.isCorrect ? '✅' : '❌'}</span>
       </div>`).join('');
+
+    // Speak buttons in result list
+    $('quiz-res-list').addEventListener('click', e => {
+      const btn = e.target.closest('.res-speak');
+      if (btn) Translator.speak(btn.dataset.word, 'en');
+    });
 
     showScreen('result');
   }
