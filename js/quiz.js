@@ -233,6 +233,10 @@ const QuizModule = (() => {
       const q = questions[current];
       if (q) Translator.speak(q.word.en, 'en');
     });
+    $('quiz-hint-en').addEventListener('click', () => {
+      const q = questions[current];
+      if (q) Translator.speak(q.word.en, 'en');
+    });
 
     $('quiz-submit-btn').addEventListener('click', submitAnswer);
     $('quiz-next-btn').addEventListener('click', nextQuestion);
